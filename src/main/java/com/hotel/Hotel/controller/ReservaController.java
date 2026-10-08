@@ -3,6 +3,7 @@ package com.hotel.Hotel.controller;
 import com.hotel.Hotel.dto.request.CrearReservaRequest;
 import com.hotel.Hotel.dto.response.ReservaResponse;
 import com.hotel.Hotel.service.ReservaService;
+import jakarta.validation.Valid; //import obligatorio
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -23,7 +24,7 @@ public class ReservaController {
 
     @PostMapping
     public ResponseEntity<ReservaResponse> crearReserva(
-            @RequestBody CrearReservaRequest request,
+            @Valid @RequestBody CrearReservaRequest request, // @Valid
             UriComponentsBuilder uriBuilder) {
 
         ReservaResponse creada = reservaService.crear(request);
@@ -38,6 +39,8 @@ public class ReservaController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponse> buscarPorId(@PathVariable UUID id) {
+        // No requiere try-catch: si el service lanza RecursoNoEncontradoException,
+        // el @RestControllerAdvice lo captura en el aire y devuelve HTTP 404
         return ResponseEntity.ok(reservaService.obtenerPorId(id));
     }
 }

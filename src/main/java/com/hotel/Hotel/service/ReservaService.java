@@ -6,6 +6,8 @@ import com.hotel.Hotel.domain.RangoFechas;
 import com.hotel.Hotel.domain.Reserva;
 import com.hotel.Hotel.dto.request.CrearReservaRequest;
 import com.hotel.Hotel.dto.response.ReservaResponse;
+import com.hotel.Hotel.exception.RecursoNoEncontradoException;
+import com.hotel.Hotel.exception.ReglaNegocioException;
 import com.hotel.Hotel.mapper.ReservaMapper;
 import com.hotel.Hotel.repository.ClienteRepository;
 import com.hotel.Hotel.repository.HabitacionRepository;
@@ -36,15 +38,22 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse crear(CrearReservaRequest request) {
+        if (request.fechaFin().isBefore(request.fechaInicio())) {
+            throw new ReglaNegocioException("La fecha de salida no puede ser anterior a la fecha de entrada.");
+        }
+
         Cliente cliente = clienteRepository.findById(request.clienteId())
-                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cliente", request.clienteId()));
 
         Habitacion habitacion = habitacionRepository.findById(request.habitacionId())
-                .orElseThrow(() -> new IllegalArgumentException("Habitación no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Habitacion", request.habitacionId()));
+
+        if (!cliente.isActivo()) {
+            throw new ReglaNegocioException("El cliente está inactivo o penalizado y no puede crear reservas.");
+        }
 
         RangoFechas periodo = new RangoFechas(request.fechaInicio(), request.fechaFin());
 
-        // Invocación a las invariantes del modelo de dominio rico
         Reserva nuevaReserva = new Reserva(cliente, habitacion, periodo);
         Reserva guardada = reservaRepository.save(nuevaReserva);
 
@@ -70,14 +79,14 @@ public class ReservaService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReservaResponse> listarTodas() {
-        return reservaMapper.toResponseList(reservaRepository.findAll());
+    public ReservaResponse obtenerPorId(UUID id) {
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Reserva", id));
+        return reservaMapper.toResponse(reserva);
     }
 
     @Transactional(readOnly = true)
-    public ReservaResponse obtenerPorId(UUID id) {
-        Reserva reserva = reservaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Reserva no encontrada"));
-        return reservaMapper.toResponse(reserva);
+    public List<ReservaResponse> listarTodas() {
+        return reservaMapper.toResponseList(reservaRepository.findAll());
     }
 }
